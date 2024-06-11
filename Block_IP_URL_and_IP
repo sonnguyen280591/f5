@@ -1,0 +1,33 @@
+when RULE_INIT { 
+
+set static::maxRate 10
+set static::windowSecs 60 
+set static::timeout 300 
+set DEBUG 1
+
+} 
+when HTTP_REQUEST { 
+if {([class match [string tolower [HTTP::uri]] starts_with DATAGROUP-RATELIMIT-URI]) and ([class match [IP::remote_addr] equals ATTACK_ADDRESS]) }
+    { 
+        set getCount [table lookup -notouch -subtable requests [IP::client_addr]]
+            if { $getCount equals "" } {
+                
+                table set -subtable requests [IP::client_addr] "1" $static::timeout $static::timeout
+            } else {
+
+            if { $getCount < $static::maxRate } {
+                table incr -notouch -subtable requests [IP::client_addr]
+
+            } else {
+                if {$getCount == $static::maxRate } {
+                    
+                   table incr -notouch -subtable requests [IP::client_addr]
+                }
+                
+                drop
+                return
+            }
+
+            } 
+    } 
+}
